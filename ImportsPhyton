@@ -1,0 +1,5 @@
+sudo apt install python3-rpi.gpio
+sudo apt install python3-pyserial
+
+sudo i2cdetect -y 1
+pip install smbus2
