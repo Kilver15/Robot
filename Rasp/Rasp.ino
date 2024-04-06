@@ -13,13 +13,15 @@ void loop() {
     int zIndex = data.indexOf("Eje Z:"); // Encuentra el índice de inicio de la cadena "Eje Z:"
     int distIndex = data.indexOf("Distancia:"); // Encuentra el índice de inicio de la cadena "Distancia:"
     int colorIndex = data.indexOf("Color:");
+    int pesoIndex = data.indexOf("Peso:");
 
     if (xIndex >= 0 && yIndex >= 0 && zIndex >= 0 && distIndex >= 0) {
       float x = data.substring(xIndex + 7, yIndex).toFloat(); // Extrae el valor de X
       float y = data.substring(yIndex + 7, zIndex).toFloat(); // Extrae el valor de Y
       float z = data.substring(zIndex + 7).toFloat(); // Extrae el valor de Z
       distancia = data.substring(distIndex + 10).toInt(); // Extrae el valor de distancia
-      String color = data.substring(colorIndex + 7);
+      String color = data.substring(colorIndex + 7, data.indexOf(',', colorIndex)); // Asegúrate de extraer solo el nombre del color
+      float peso = data.substring(pesoIndex + 6).toFloat();
 
       // Aquí puedes usar los valores de x, y, z y distancia como necesites
       Serial.print("Valores recibidos: X = ");
@@ -31,7 +33,9 @@ void loop() {
       Serial.print(", Distancia = ");
       Serial.print(distancia);
       Serial.print(", Color = ");
-      Serial.println(color);
+      Serial.print(color);
+      Serial.print(", Peso = ");
+      Serial.println(peso);
 
       // Lógica de control del robot basada en la distancia y los valores del giroscopio
       if (distancia > rangoDeDistancia) {
@@ -42,19 +46,19 @@ void loop() {
         Serial.println("Para");
       }
 
-      if (color == "Negro") {
+      if (strcmp(color.c_str(), "Negro") == 0) {
         // Actions for black color
         Serial.println("Avanza");
-      } else if (color == "Verde") {
+        } else if (strcmp(color.c_str(), "Verde") == 0) {
         // Actions for green color
         Serial.println("Gira");
-      } else if (color == "Rojo") {
+        } else if (strcmp(color.c_str(), "Rojo") == 0) {
         // Actions for red color
         Serial.println("Para");
-      } else {
+        } else {
         // Actions for other colors
-      }
+        Serial.println("Otro");
+        }
     }
   }
 }
-
