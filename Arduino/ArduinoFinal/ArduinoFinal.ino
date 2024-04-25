@@ -5,9 +5,6 @@
 #include <Adafruit_Sensor.h>
 #include <Wire.h>
 
-// Boton
-const int botonpin = 22;
-
 // Giroscopio
 Adafruit_MPU6050 mpu;
 
@@ -23,7 +20,7 @@ HX711 celda;
 Ultrasonic ultrasonicoIzq(52,53);
 Ultrasonic ultrasonicoDer(50,51);
 Ultrasonic ultrasonicoCen(48,49);
-float rangoDistancia = -10; // Rango en cm para parar si detecta algo
+float rangoDistancia = 25; // Rango en cm para parar si detecta algo
 
 // Motores
 int velocidad = 100;
@@ -42,16 +39,9 @@ int IN3 = 10;
 int IN4 = 9;
 int ENB = 8;
 
-// Variables para instrucciones
-String instruccion = "";
-int caracterActual = 0;
-String raspColor = "";
-bool ciclo = true;
-
 void setup() {
   Serial.begin(9600);
   // Inicio de boton
-  pinMode(botonpin, INPUT_PULLUP);
 
   // Inicio de bascula
   celda.begin(DT, SCK);	
@@ -86,51 +76,37 @@ void setup() {
 }
 
 void loop() {
-  if (Serial.available() > 0) {
-    if (instruccion.length() == 0) {
-      instruccion = Serial.readStringUntil('\n');
-      // Serial.println("Instruccion recibida");
-      caracterActual = 0;
-      ciclo = true;
-    } 
-    while(ciclo) {
       // Bascula
       float peso = leerPeso();
-      // Boton
-      int boton = leerBoton();
       // Giro
       int giro = deteccionGiroscopio();
       // Ultrasonicos
       float di = leerUltrasonico(ultrasonicoIzq);
       float dd = leerUltrasonico(ultrasonicoDer);
       float dc = leerUltrasonico(ultrasonicoCen);
-      // Colores 1 y 2
-      if(Serial.available() > 0) {
-        raspColor = Serial.readStringUntil('\n');
-      } else {
-        raspColor = "Otro";
-      }
-      String ardColor = leerColor();
+      String Color = leerColor();
       // Impresiones
-      Serial.print("BO : "); Serial.print(boton); Serial.println(" ");
-      Serial.print("GI : "); Serial.print(giro); Serial.println(" ");
-      Serial.print("PE : "); Serial.print(peso); Serial.println(" : gr");
-      Serial.print("UL1 : "); Serial.print(di); Serial.println(" : cm");
-      Serial.print("UL2 : "); Serial.print(dd); Serial.println(" : cm");
-      Serial.print("UL3 : "); Serial.print(dc); Serial.println(" : cm");
-      Serial.print("COA : "); Serial.print(ardColor); Serial.println(" ");
-      Serial.print("COR : "); Serial.print(raspColor); Serial.println(" ");
-      if (di <= rangoDistancia || dd <= rangoDistancia || dc <= rangoDistancia) {
+      Serial.print("GI : "); Serial.print(giro); Serial.print(" : "); Serial.println(": Giroscopio");
+      Serial.print("PE : "); Serial.print(peso); Serial.print(" : gr"); Serial.println(": Bascula");
+      Serial.print("UL1 : "); Serial.print(di); Serial.print(" : cm"); Serial.println(": Ultrasonico");
+      Serial.print("UL2 : "); Serial.print(dd); Serial.print(" : cm"); Serial.println(": Ultrasonico");
+      Serial.print("UL3 : "); Serial.print(dc); Serial.print(" : cm"); Serial.println(": Ultrasonico");
+      Serial.print("CO : "); Serial.print(Color); Serial.print(" : "); Serial.println(": Color");
+      if (di >= rangoDistancia || dd >= rangoDistancia || dc >= rangoDistancia) {
         stop();
-      } else {
-        compararColores(raspColor, ardColor);
-        if (caracterActual == instruccion.length()) {
-          instruccion = "";
-        }
-      }
+      } 
+
+      char Instruccion = Serial.read();
+      if (Instruccion == "W" || Instruccion == "w") {
+        adelante();
+      } else if (Instruccion == "A" || Instruccion == "a") {
+        izquierda();
+      } else if (Instruccion == "D" || Instruccion == "d") {
+        derecha();
+      } else if (Instruccion == "S" || Instruccion == "s") {
+        reversa();
+      } 
     }
-  }
-}
 int deteccionGiroscopio() {
   if(mpu.getMotionInterruptStatus()) {
         sensors_event_t a, g, temp;
@@ -143,14 +119,6 @@ int deteccionGiroscopio() {
 float leerUltrasonico(Ultrasonic ultrasonico) {
   float distancia = ultrasonico.read();
   return distancia;
-}
-
-int leerBoton() {
-  if(digitalRead(botonpin) == HIGH) {
-    return 1;
-  } else {
-    return 0;
-  }
 }
 
 float leerPeso() {
@@ -179,53 +147,7 @@ String leerColor() {
   } else {
     color = "Otro";
   }
-   Serial.print("R: ");Serial.print(int(red));
-   Serial.print("   G: ");Serial.print(int(green));
-   Serial.print("   B: ");Serial.print(int(blue));
-  //  Serial.print("   Color: ");Serial.println(color);
   return color;
-}
-
-void compararColores(String raspColor, String ardColor) {
-  if (raspColor == "Verde" || ardColor == "Verde") {
-    char caracter = instruccion.charAt(caracterActual);
-    elegirCamino(caracter);
-    caracterActual ++;
-    Serial.println(instruccion.length());
-  } else if (raspColor == "Negro" && ardColor == "Otro") {
-    izquierda();
-  } else if (raspColor == "Otro" && ardColor == "Negro") {
-    derecha();
-  } else if (raspColor == "Negro" && ardColor == "Negro") {
-    stop();
-  } else if (raspColor == "Otro" && ardColor == "Otro") {
-    adelante();
-  } else if (raspColor == "Rojo" || ardColor == "Rojo") {
-    stop();
-    ciclo = false;
-    caracterActual = 0;
-    instruccion = "";
-  }
-}
-
-void elegirCamino(char currentChar) {
-  if(currentChar == 'I' || currentChar == 'i'){
-    izquierda();
-    delay(2000);
-    adelante();
-    // Serial.println("Izq");
-  }
-  else if(currentChar == 'D' || currentChar == 'd'){
-    derecha();
-    delay(2000);
-    adelante();
-    // Serial.println("Der");
-  }
-  else if(currentChar == 'C' || currentChar == 'c'){
-    adelante();
-    // Serial.println("Seg");
-  }
-  delay(1000);
 }
 
 void adelante() {
